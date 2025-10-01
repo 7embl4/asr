@@ -12,7 +12,7 @@ comet_ml
 hydra-core
 wget
 datasets
-dataset[audio]
+datasets[audio]
 
 black
 isort
