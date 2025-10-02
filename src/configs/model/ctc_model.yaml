@@ -1,0 +1,12 @@
+encoder_type: 'rnn'
+in_features: 0  # embedding len
+out_features: 0  # vocab len
+
+rnn:
+  hidden_size: 1024
+  num_layers: 3
+
+transformer:
+  nhead: 8
+  dim_fc: 1024
+  num_layers: 3
