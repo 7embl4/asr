@@ -8,11 +8,11 @@ class CTCModel(nn.Module):
 
         self.encoder = instantiate(config.encoder)
         self.fc = instantiate(config.classifier)
-        # maybe softmax here
+        self.log_softmax = nn.LogSoftmax()
     
     def forward(self, batch):
         spec_batch = batch['spectrogram']
-        print(spec_batch.shape)
-        x = self.encoder(spec_batch.permute(0, 2, 1))
-        x = self.fc(x)
-        return x
+        out = self.encoder(spec_batch.permute(0, 2, 1))
+        out = self.fc(out)
+        out = self.log_softmax(out)
+        return {'log_probs': out}
