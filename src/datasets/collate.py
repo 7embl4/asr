@@ -1,4 +1,7 @@
 import torch
+from torch.nn.utils.rnn import pad_sequence
+
+from src.text_encoder import CTCTextEncoder
 
 
 def collate_fn(dataset_items: list[dict]):
@@ -13,5 +16,13 @@ def collate_fn(dataset_items: list[dict]):
         result_batch (dict[Tensor]): dict, containing batch-version
             of the tensors.
     """
-
-    pass  # TODO
+    text_encoded_pad = CTCTextEncoder().char2ind['']
+    result_batch = {
+        #'audio': pad_sequence([item['audio'].squeeze() for item in dataset_items], batch_first=True),
+        'spectrogram': pad_sequence([item['spectrogram'].squeeze().T for item in dataset_items], batch_first=True).permute(0, 2, 1),
+        'text_encoded': pad_sequence([item['text_encoded'].squeeze() for item in dataset_items], batch_first=True, padding_value=text_encoded_pad),
+        'input_lens': torch.tensor([item['spectrogram'].shape[-1] for item in dataset_items]),  # lengths of spectrograms without padding
+        'target_lens': torch.tensor([item['text_encoded'].shape[-1] for item in dataset_items]),  # lengths of encoded texts without padding
+    }
+    return result_batch
+    

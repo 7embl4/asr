@@ -1,12 +1,19 @@
-encoder_type: 'rnn'
-in_features: 0  # embedding len
-out_features: 0  # vocab len
+in_features: 128  # mel filters count
+out_features: 28  # vocab len
 
-rnn:
-  hidden_size: 1024
+encoder_layer:
+    _target_: torch.nn.TransformerEncoderLayer
+    d_model: ${in_features}
+    nhead: 8
+    dim_feedforward: 1024
+    batch_first: True
+
+encoder:
+  _target_: torch.nn.TransformerEncoder
+  encoder_layer: ${encoder_layer}
   num_layers: 3
 
-transformer:
-  nhead: 8
-  dim_fc: 1024
-  num_layers: 3
+classifier:
+  _target_: torch.nn.Linear
+  in_features: ${in_features}
+  out_features: ${out_features}
