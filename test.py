@@ -1,5 +1,6 @@
 import torch
 import torchaudio
+from torchinfo import summary
 import torch.nn as nn
 from torch_audiomentations import Gain
 import torchaudio.transforms as T
@@ -20,6 +21,16 @@ import warnings
 warnings.filterwarnings('ignore')
 torch.manual_seed(0)
 
+# m = nn.Conv1d(16, 32, kernel_size=5, padding=2)
+# i = torch.rand(10, 16, 80)
+# out = m(i)
+# print(out.shape)
+
+# n = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1)
+# a = torch.rand(10, 3, 128, 128)
+# out = n(a)
+# print(out.shape)
+
 dataset = LibrispeechDataset(
     part='train-clean-100', 
     text_encoder=CTCTextEncoder(),
@@ -31,17 +42,37 @@ dataset = LibrispeechDataset(
 items = [dataset[i] for i in range(10)]
 batch = collate_fn(items)
 
-config = OmegaConf.load('src/configs/metrics/example.yaml')
+# print('batch sizes')
+# print('spectrogram: ', batch['spectrogram'].shape)
+# print('text_encoded: ', batch['text_encoded'].shape)
+# print('log_probs_length: ', batch['log_probs_length'].shape)
+# print('text_encoded_length: ', batch['text_encoded_length'].shape)
+# print('---------------------------')
 
-text_encoder = CTCTextEncoder()
-metrics = {"train": [], "inference": []}
-for metric_type in ["train", "inference"]:
-    for metric_config in config.get(metric_type, []):
-        # use text_encoder in metrics
-        metrics[metric_type].append(
-            instantiate(metric_config, text_encoder=text_encoder)
-        )
-print(metrics)
+config = OmegaConf.load('src/configs/model/ctc_model.yaml')
+model = CTCModel(config)
+
+print(summary(model))
+
+out = model(batch)
+print(out['log_probs'].shape)
+
+
+
+
+
+
+# config = OmegaConf.load('src/configs/metrics/example.yaml')
+
+# text_encoder = CTCTextEncoder()
+# metrics = {"train": [], "inference": []}
+# for metric_type in ["train", "inference"]:
+#     for metric_config in config.get(metric_type, []):
+#         # use text_encoder in metrics
+#         metrics[metric_type].append(
+#             instantiate(metric_config, text_encoder=text_encoder)
+#         )
+# print(metrics)
 
 # print('dataset item')
 # print('audio: ', items[0]['audio'].shape)
@@ -49,13 +80,6 @@ print(metrics)
 # print('text: ', items[0]['text'])
 # print('text_encoded: ', items[0]['text_encoded'].shape)
 # print('audio_path: ', items[0]['audio_path'])
-# print('---------------------------')
-
-# print('batch sizes')
-# print('spectrogram: ', batch['spectrogram'].shape)
-# print('text_encoded: ', batch['text_encoded'].shape)
-# print('log_probs_length: ', batch['log_probs_length'].shape)
-# print('text_encoded_length: ', batch['text_encoded_length'].shape)
 # print('---------------------------')
 
 # cfg = OmegaConf.load('src/configs/model/ctc_model.yaml')
