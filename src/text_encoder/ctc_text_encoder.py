@@ -1,7 +1,9 @@
 import re
 from string import ascii_lowercase
+from collections import defaultdict
 
 import torch
+import torchaudio 
 
 # TODO add CTC decode
 # TODO add BPE, LM, Beam Search support
@@ -11,7 +13,7 @@ import torch
 
 
 class CTCTextEncoder:
-    EMPTY_TOK = ""
+    EMPTY_TOK = "^"
 
     def __init__(self, alphabet=None, **kwargs):
         """
@@ -59,10 +61,40 @@ class CTCTextEncoder:
         return "".join([self.ind2char[int(ind)] for ind in inds]).strip()
 
     def ctc_decode(self, inds) -> str:
-        pass  # TODO
+        prev_symbol = None
+        res = ""
+        for ind in inds:
+            if (prev_symbol != ind):
+                res += self.ind2char[ind]
+                prev_symbol = ind
+        return res.replace(self.EMPTY_TOK, "").strip()
+
+    def beam_search(self, log_probs, beam_size=4):
+        dp = {
+            ("", self.EMPTY_TOK): 1.0
+        }
+        for curr_step_prob in log_probs:
+            dp = self.__expand_and_merge_beams(dp, curr_step_prob)
+            dp = self.__truncate_beams(dp, beam_size)
+        return dp
+
+    def __expand_and_merge_beams(self, dp, curr_step_prob): 
+        new_dp = defaultdict(float)
+        for (pref, last_char), pref_proba in dp.items():
+            for idx, char in enumerate(self.vocab):
+                curr_pref_proba = pref_proba * curr_step_prob[idx]
+                curr_pref = pref
+                if (char != self.EMPTY_TOK and last_char != char):
+                    curr_pref += char
+                curr_char = char
+                new_dp[(curr_pref, curr_char)] += curr_pref_proba.item()
+        return new_dp
+    
+    def __truncate_beams(self, dp, beam_size):
+        return dict(sorted(list(dp.items()), key=lambda x: x[1])[:beam_size])
 
     @staticmethod
     def normalize_text(text: str):
         text = text.lower()
-        text = re.sub(r"[^a-z ]", "", text)
+        text = re.sub(r"[^^a-z ]", "", text)
         return text

@@ -17,6 +17,9 @@ from src.datasets.collate import collate_fn
 from src.loss import CTCLossWrapper
 #from src.transforms.wav_augs import Gain
 
+from src.metrics.utils import calc_wer
+from src.metrics.utils import calc_cer
+
 import warnings
 warnings.filterwarnings('ignore')
 torch.manual_seed(0)
@@ -42,6 +45,24 @@ dataset = LibrispeechDataset(
 items = [dataset[i] for i in range(10)]
 batch = collate_fn(items)
 
+config = OmegaConf.load('src/configs/model/ctc_model.yaml')
+model = CTCModel(config)
+out = model(**batch)
+print(out['log_probs'].shape)
+print(out['logits'].shape)
+
+text_encoder = CTCTextEncoder()
+print(text_encoder.beam_search(out['log_probs'][0]))
+
+# text_encoder = CTCTextEncoder()
+# text = "^^^^^^hhhh^^^^e^ll^^^^llooooo ^^w^orrl^^^^ddd"
+# encoded_text = text_encoder.encode(text).squeeze().tolist()
+# print('encoded text: ', encoded_text)
+# print('decoded text: ', text_encoder.ctc_decode(encoded_text))
+
+
+
+
 # print('batch sizes')
 # print('spectrogram: ', batch['spectrogram'].shape)
 # print('text_encoded: ', batch['text_encoded'].shape)
@@ -49,13 +70,6 @@ batch = collate_fn(items)
 # print('text_encoded_length: ', batch['text_encoded_length'].shape)
 # print('---------------------------')
 
-config = OmegaConf.load('src/configs/model/ctc_model.yaml')
-model = CTCModel(config)
-
-print(summary(model))
-
-out = model(batch)
-print(out['log_probs'].shape)
 
 
 

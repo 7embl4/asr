@@ -173,13 +173,15 @@ class CTCModel(nn.Module):
             ))
         self.conf_blocks = nn.Sequential(*modules)
         self.decoder = instantiate(config.decoder)
-        self.softmax = nn.Softmax(dim=-1)
+        self.log_softmax = nn.LogSoftmax(dim=-1)
 
-    def forward(self, batch):
-        spec_batch = batch['spectrogram']
-        x = torch.transpose(spec_batch, 1, 2)
+    def forward(self, spectrogram, **batch):
+        x = torch.transpose(spectrogram, 1, 2)
+        res = {}
         x = self.subsampling(x)
         x = self.conf_blocks(x)
         x = self.decoder(x)
-        x = self.softmax(x)
-        return {'log_probs': x}
+        res['logits'] = x
+        x = self.log_softmax(x)
+        res['log_probs'] = x
+        return res
