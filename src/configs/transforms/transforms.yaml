@@ -1,7 +1,8 @@
 defaults:
+  - batch_transforms: batch_transforms
   - instance_transforms: wav_augs
   - _self_
 
-batch_transforms:
-  train: null
-  inferecne: null
+# batch_transforms:
+#   train: null
+#   inferecne: null

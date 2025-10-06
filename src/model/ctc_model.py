@@ -194,6 +194,4 @@ class CTCModel(nn.Module):
         x = self.conf_blocks(x)
         x = self.decoder(x)
         x = self.log_softmax(x)
-        print(x)
-        print()
         return {'log_probs': x}

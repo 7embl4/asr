@@ -5,6 +5,8 @@ import torch.nn as nn
 import torchaudio.transforms as T
 from torchvision.transforms.v2 import Compose
 from math import ceil
+import numpy as np
+from torch.utils.data import DataLoader
 
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
@@ -22,6 +24,7 @@ from src.transforms.wav_augs import (
     ImpulseResponse,
     BandPassFilter
 )
+from src.transforms.batch_transforms import Normalize
 
 from src.metrics.utils import calc_wer
 from src.metrics.utils import calc_cer
@@ -29,6 +32,8 @@ from src.metrics.utils import calc_cer
 import warnings
 warnings.filterwarnings('ignore')
 torch.manual_seed(0)
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # m = nn.Conv1d(16, 32, kernel_size=5, padding=2)
 # i = torch.rand(10, 16, 80)
@@ -44,7 +49,7 @@ dataset = LibrispeechDataset(
     part='train-clean-100', 
     text_encoder=CTCTextEncoder(),
     instance_transforms={
-        'get_spectrogram': T.MelSpectrogram(sample_rate=16000),
+        'get_spectrogram': T.MelSpectrogram(sample_rate=16000, n_fft=100),
         'audio': Compose([
             Gain(), 
             Pitch(sample_rate=16000),
@@ -53,22 +58,76 @@ dataset = LibrispeechDataset(
         ])
     })
 
-items = [dataset[i] for i in range(10)]
-batch = collate_fn(items)
+# items = [dataset[i] for i in range(16)]
+# batch = collate_fn(items)
+# print(batch["spectrogram"].shape)
+# exit(0)
 
-print(ceil(4.3))
+# means = torch.mean(batch["spectrogram"], dim=1).unsqueeze(1)
+# stds = torch.std(batch["spectrogram"], dim=1).unsqueeze(1)
 
-# model = CTCModel(
-#     in_channels=128,  # n_mel
-#     out_channels=128,
-#     subsampling_out=256,
-#     n_blocks=4,
-#     decoder_dim=640,
-#     out_feat=28  # vocab len
-# )
-# out = model(**batch)
-# print(summary(model))
-# print(out["log_probs"].shape)
+# norm = (batch["spectrogram"] - means) / (stds + 1e-8)
+# print(batch["spectrogram"])
+# print(norm.shape)
+# print(norm)
+
+# print(batch["spectrogram"].shape)
+# print(batch["spectrogram"][0].shape)
+#print(batch["spectrogram"][0])
+#norm = Normalize(0.5, 0.5)
+#print(norm(batch["spectrogram"][0]))
+
+dataloader = DataLoader(
+    dataset=dataset,
+    collate_fn=collate_fn,
+    drop_last=True,
+    shuffle=True,
+    batch_size=16
+)
+
+
+model = CTCModel(
+    in_channels=128,  # n_mel
+    out_channels=128,
+    subsampling_out=256,
+    n_blocks=4,
+    decoder_dim=640,
+    out_feat=28  # vocab len
+)
+model.to(device)
+opt = torch.optim.AdamW(model.parameters())
+criterion = CTCLossWrapper()
+encoder = CTCTextEncoder()
+
+inf_loss = False
+for _e in range(5):
+    for idx, batch in enumerate(dataloader):
+        # if (idx + 1 == 18):
+        #     continue
+        batch["spectrogram"] = batch["spectrogram"].to(device)
+        opt.zero_grad()
+        out = model(**batch)
+        batch.update(out)
+        loss = criterion(**batch)
+        loss["loss"].backward()
+        opt.step()
+        print(f"loss on epoch {_e + 1}, batch {idx + 1}: ", loss["loss"])
+        if (torch.isinf(loss["loss"]).any()):
+            #print(batch)
+            inf_loss = True
+            print(batch["text"])
+            print(batch["log_probs_length"], batch["text_encoded_length"])
+            print(batch["log_probs"].mean(), batch["log_probs"].std())
+            break
+        if (idx + 1 > 20):
+            break
+    if inf_loss:
+        break
+
+
+    #print(out["log_probs"])
+
+#print(out["log_probs"])
 
 # encoder = CTCTextEncoder()
 # beam_search_res = encoder.beam_search(out["log_probs"])
