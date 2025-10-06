@@ -14,7 +14,7 @@ train:
       - _target_: src.transforms.wav_augs.BandPassFilter
         sample_rate: 16000
         min_center_frequency: 150
-        max_center_frequency: 6000
+        max_center_frequency: 4000
 
 inference:
   get_spectrogram:

@@ -4,7 +4,7 @@ from torchinfo import summary
 import torch.nn as nn
 import torchaudio.transforms as T
 from torchvision.transforms.v2 import Compose
-
+from math import ceil
 
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
@@ -56,17 +56,31 @@ dataset = LibrispeechDataset(
 items = [dataset[i] for i in range(10)]
 batch = collate_fn(items)
 
-print(batch["audio"].shape)
+print(ceil(4.3))
+
+# model = CTCModel(
+#     in_channels=128,  # n_mel
+#     out_channels=128,
+#     subsampling_out=256,
+#     n_blocks=4,
+#     decoder_dim=640,
+#     out_feat=28  # vocab len
+# )
+# out = model(**batch)
+# print(summary(model))
+# print(out["log_probs"].shape)
+
+# encoder = CTCTextEncoder()
+# beam_search_res = encoder.beam_search(out["log_probs"])
+# print(len(beam_search_res))
+# print(len(beam_search_res[0]))
+# print(beam_search_res[0][0].tokens)
 
 # t = torch.tensor([1, 2, 3])
 # print(t.unsqueeze(0).shape)
 # print(t.unsqueeze(1).shape)
 
-# config = OmegaConf.load('src/configs/model/ctc_model.yaml')
-# model = CTCModel(config)
-# out = model(**batch)
-# print(out['log_probs'].shape)
-# print(out['logits'].shape)
+
 
 # text_encoder = CTCTextEncoder()
 # print(text_encoder.beam_search(out['log_probs'][0]))

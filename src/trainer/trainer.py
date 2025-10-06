@@ -103,7 +103,14 @@ class Trainer(BaseTrainer):
         ]
         argmax_texts_raw = [self.text_encoder.decode(inds) for inds in argmax_inds]
         argmax_texts = [self.text_encoder.ctc_decode(inds) for inds in argmax_inds]
-        beam_search_texts = [self.text_encoder.beam_search(probs) for probs in log_probs]
+        beam_search_results = self.text_encoder.beam_search(log_probs)
+
+        beam_search_texts = []
+        for hypo in beam_search_results:
+            hypo_text = self.text_encoder.ctc_decode(hypo[0].tokens.tolist())
+            hypo_wer = calc_wer(hypo_text)
+            hypo_cer = calc_cer(hypo_text)
+            beam_search_texts.append((hypo_text, hypo_wer, hypo_cer))
 
         tuples = list(zip(argmax_texts, text, argmax_texts_raw, audio_path, beam_search_texts))
 
@@ -113,16 +120,15 @@ class Trainer(BaseTrainer):
             argmax_wer = calc_wer(target, pred) * 100
             argmax_cer = calc_cer(target, pred) * 100
 
-            beam_search_hypos = [hypo[0][0] for hypo in beam_search.items()]
-            # TODO: think of good logging
-
             rows[Path(audio_path).name] = {
                 "target": target,
                 "raw prediction": raw_pred,
                 "predictions": pred,
-                "beam_search_predictions": None,  # TBA
                 "argmax_wer": argmax_wer,
                 "argmax_cer": argmax_cer,
+                "beam_search_pred_text": beam_search[0],
+                "beam_search_wer": beam_search[1],
+                "beam_search_cer": beam_search[2],
 
             }
         self.writer.add_table(

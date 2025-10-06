@@ -1,44 +1,7 @@
-in_features: 128  # mel filters count
-out_features: 28  # vocab len
-
+_target_: src.model.CTCModel
+in_channels: 128  # n_mel
+out_channels: 128
 subsampling_out: 256
-decoder_dim: 640
 n_blocks: 4
-
-subsampling:
-  _target_: src.model.Subsampling
-  in_channels: ${in_features}
-  out_channels: ${in_features}
-  kernel_size: 4
-  fc_out: ${subsampling_out}
-  dropout_rate: 0.1
-
-fc_module:
-  _target_: src.model.FeedForwardModule
-  in_feat: ${subsampling_out}
-  fc_multiplier: 4
-  dropout_rate: 0.1
-
-attention_module:
-  _target_: src.model.MultiHeadAttentionModule
-  in_feat: ${subsampling_out}
-  n_attention_heads: 4
-  fc_dim: 256
-  n_layers: 16
-
-convolution_module:
-  _target_: src.model.ConvolutionModule
-  in_feat: ${subsampling_out}
-  kernel_size: 31
-  dropout_rate: 0.1
-
-decoder:
-  _target_: torch.nn.Sequential
-  _args_:
-    - _target_: torch.nn.Linear
-      in_features: ${subsampling_out}
-      out_features: ${decoder_dim}
-    - _target_: torch.nn.ReLU
-    - _target_: torch.nn.Linear
-      in_features: ${decoder_dim}
-      out_features: ${out_features}
+decoder_dim: 640
+out_feat: 28  # vocab len

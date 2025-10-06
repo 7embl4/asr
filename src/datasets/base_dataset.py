@@ -90,15 +90,9 @@ class BaseDataset(Dataset):
             "text_encoded": text_encoded,
             "audio_path": audio_path,
         }
-        print("real audio: ", instance_data["audio"].squeeze()[:5])
         instance_data = self.preprocess_data(instance_data)
-        print("aug audio: ", instance_data["audio"].squeeze()[:5])
         spectrogram = self.get_spectrogram(instance_data["audio"])
         instance_data.update({"spectrogram": spectrogram})
-
-        # TODO think of how to apply wave augs before calculating spectrogram
-        # Note: you may want to preserve both audio in time domain and
-        # in time-frequency domain for logging
 
         return instance_data
 

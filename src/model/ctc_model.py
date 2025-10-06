@@ -8,9 +8,9 @@ class Subsampling(nn.Module):
             self, 
             in_channels, 
             out_channels,
-            kernel_size,
-            fc_out,
-            dropout_rate
+            kernel_size=4,
+            fc_out=256,
+            dropout_rate=0.1
         ):
         super().__init__()
         
@@ -38,8 +38,8 @@ class FeedForwardModule(nn.Module):
     def __init__(
             self,
             in_feat,
-            fc_multiplier,
-            dropout_rate
+            fc_multiplier=4,
+            dropout_rate=0.1
         ):
         super().__init__()
 
@@ -63,9 +63,9 @@ class MultiHeadAttentionModule(nn.Module):
     def __init__(
             self,
             in_feat,
-            n_attention_heads,
-            fc_dim,
-            n_layers
+            n_attention_heads=4,
+            fc_dim=256,
+            n_layers=16
         ):
         super().__init__()
 
@@ -92,8 +92,8 @@ class ConvolutionModule(nn.Module):
     def __init__(
             self,
             in_feat,
-            kernel_size,
-            dropout_rate
+            kernel_size=31,
+            dropout_rate=0.1
         ):
         super().__init__()
         
@@ -132,47 +132,60 @@ class ConvolutionModule(nn.Module):
 
 
 class ConformerBlock(nn.Module):
-    def __init__(
-            self,
-            fc_module_1,
-            attention_module,
-            convolution_module,
-            fc_module_2,
-            subsampling_out
-        ):
+    def __init__(self, in_feat):
         super().__init__()
 
-        self.fc_module_1 = fc_module_1
-        self.attention_module = attention_module
-        self.convolution_module = convolution_module
-        self.fc_module_2 = fc_module_2
-        self.layer_norm = nn.LayerNorm(subsampling_out)
+        self.layers = nn.Sequential(
+            FeedForwardModule(in_feat),
+            MultiHeadAttentionModule(in_feat),
+            ConvolutionModule(in_feat),
+            FeedForwardModule(in_feat)    
+        )
+        self.layer_norm = nn.LayerNorm(in_feat)
 
     def forward(self, x):
-        x = self.fc_module_1(x)
-        x = self.attention_module(x)
-        x = self.convolution_module(x)
-        x = self.fc_module_2(x)
+        x = self.layers(x)
         x = self.layer_norm(x)
         return x
 
 
+class Decoder(nn.Module):
+    def __init__(self, in_feat, decoder_dim, out_feat):
+        super().__init__()
+        self.layers = nn.Sequential(
+            nn.Linear(in_feat, decoder_dim),
+            nn.ReLU(),
+            nn.Linear(decoder_dim, out_feat)
+        )
+    
+    def forward(self, x):
+        x = self.layers(x)
+        return x
+
+
 class CTCModel(nn.Module):
-    def __init__(self, config):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            subsampling_out,
+            n_blocks,
+            decoder_dim,
+            out_feat
+        ):
         super().__init__()
 
-        self.subsampling = instantiate(config.subsampling)
+        self.subsampling = Subsampling(
+            in_channels, 
+            out_channels, 
+            fc_out=subsampling_out
+        )
         modules = []
-        for _ in range(config.get('n_blocks', 4)):
-            modules.append(ConformerBlock(
-                instantiate(config.fc_module),
-                instantiate(config.attention_module),
-                instantiate(config.convolution_module),
-                instantiate(config.fc_module),
-                config.get('subsampling_out', 1024)
-            ))
+        for _ in range(n_blocks):
+            modules.append(ConformerBlock(subsampling_out))
         self.conf_blocks = nn.Sequential(*modules)
-        self.decoder = instantiate(config.decoder)
+
+        self.decoder = Decoder(subsampling_out, decoder_dim, out_feat)
         self.log_softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, spectrogram, **batch):
@@ -181,4 +194,6 @@ class CTCModel(nn.Module):
         x = self.conf_blocks(x)
         x = self.decoder(x)
         x = self.log_softmax(x)
+        print(x)
+        print()
         return {'log_probs': x}
