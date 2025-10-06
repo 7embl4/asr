@@ -177,11 +177,8 @@ class CTCModel(nn.Module):
 
     def forward(self, spectrogram, **batch):
         x = torch.transpose(spectrogram, 1, 2)
-        res = {}
         x = self.subsampling(x)
         x = self.conf_blocks(x)
         x = self.decoder(x)
-        res['logits'] = x
         x = self.log_softmax(x)
-        res['log_probs'] = x
-        return res
+        return {'log_probs': x}

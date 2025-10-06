@@ -19,7 +19,7 @@ def collate_fn(dataset_items: list[dict]):
     EMPTY_TOK = CTCTextEncoder().EMPTY_TOK
     text_encoded_pad = CTCTextEncoder().char2ind[EMPTY_TOK]
     result_batch = {
-        # 'audio': pad_sequence([item['audio'].squeeze() for item in dataset_items], batch_first=True),
+        'audio': pad_sequence([item['audio'].squeeze() for item in dataset_items], batch_first=True),
         'spectrogram': pad_sequence([item['spectrogram'].squeeze().T for item in dataset_items], batch_first=True).permute(0, 2, 1),
         # 'text': None,
         'text_encoded': pad_sequence([item['text_encoded'].squeeze() for item in dataset_items], batch_first=True, padding_value=text_encoded_pad),

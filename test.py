@@ -2,9 +2,9 @@ import torch
 import torchaudio
 from torchinfo import summary
 import torch.nn as nn
-from torch_audiomentations import Gain
 import torchaudio.transforms as T
 from torchvision.transforms.v2 import Compose
+
 
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
@@ -15,7 +15,13 @@ from src.text_encoder import CTCTextEncoder
 from src.datasets import LibrispeechDataset
 from src.datasets.collate import collate_fn
 from src.loss import CTCLossWrapper
-#from src.transforms.wav_augs import Gain
+from src.transforms.wav_augs import (
+    Gain, 
+    Pitch, 
+    Noise, 
+    ImpulseResponse,
+    BandPassFilter
+)
 
 from src.metrics.utils import calc_wer
 from src.metrics.utils import calc_cer
@@ -39,20 +45,31 @@ dataset = LibrispeechDataset(
     text_encoder=CTCTextEncoder(),
     instance_transforms={
         'get_spectrogram': T.MelSpectrogram(sample_rate=16000),
-        #'audio': Compose([Gain()])
+        'audio': Compose([
+            Gain(), 
+            Pitch(sample_rate=16000),
+            Noise(loc=0.0, scale=0.03),
+            BandPassFilter(sample_rate=16000)
+        ])
     })
 
 items = [dataset[i] for i in range(10)]
 batch = collate_fn(items)
 
-config = OmegaConf.load('src/configs/model/ctc_model.yaml')
-model = CTCModel(config)
-out = model(**batch)
-print(out['log_probs'].shape)
-print(out['logits'].shape)
+print(batch["audio"].shape)
 
-text_encoder = CTCTextEncoder()
-print(text_encoder.beam_search(out['log_probs'][0]))
+# t = torch.tensor([1, 2, 3])
+# print(t.unsqueeze(0).shape)
+# print(t.unsqueeze(1).shape)
+
+# config = OmegaConf.load('src/configs/model/ctc_model.yaml')
+# model = CTCModel(config)
+# out = model(**batch)
+# print(out['log_probs'].shape)
+# print(out['logits'].shape)
+
+# text_encoder = CTCTextEncoder()
+# print(text_encoder.beam_search(out['log_probs'][0]))
 
 # text_encoder = CTCTextEncoder()
 # text = "^^^^^^hhhh^^^^e^ll^^^^llooooo ^^w^orrl^^^^ddd"
