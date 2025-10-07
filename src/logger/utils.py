@@ -53,14 +53,14 @@ def plot_spectrogram(spectrogram, name=None):
         image (Image): image of the spectrogram
     """
     plt.figure(figsize=(20, 5))
-    plt.pcolormesh(spectrogram)
+    plt.pcolormesh(spectrogram[:, :512])
     plt.title(name)
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
     buf.seek(0)
 
     # convert buffer to Tensor
-    image = ToTensor()(PIL.Image.open(buf))
+    image = PIL.Image.open(buf).convert("RGB")
 
     plt.close()
 

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+import torchaudio
 
 from src.logger.utils import plot_spectrogram
 from src.metrics.tracker import MetricTracker
@@ -79,10 +80,19 @@ class Trainer(BaseTrainer):
         # logging scheme might be different for different partitions
         if mode == "train":  # the method is called only every self.log_step steps
             self.log_spectrogram(**batch)
+            self.log_audio(**batch)
         else:
             # Log Stuff
             self.log_spectrogram(**batch)
+            self.log_audio(**batch)
             self.log_predictions(**batch)
+
+    def log_audio(self, audio_path, **batch):
+        self.writer.add_audio(
+            audio_name="audio",
+            audio=torchaudio.load(audio_path[0])[0],
+            sample_rate=16000
+        )
 
     def log_spectrogram(self, spectrogram, **batch):
         spectrogram_for_plot = spectrogram[0].detach().cpu()

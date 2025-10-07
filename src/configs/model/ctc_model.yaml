@@ -1,6 +1,7 @@
 _target_: src.model.CTCModel
-in_channels: 128  # n_mel
-out_channels: 128
+in_channels: 50  # n_mel
+out_channels: 50
+subsampling_rate: 2
 subsampling_out: 256
 n_blocks: 4
 decoder_dim: 640

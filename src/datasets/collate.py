@@ -26,6 +26,7 @@ def collate_fn(dataset_items: list[dict]):
         'text_encoded': pad_sequence([item['text_encoded'].squeeze() for item in dataset_items], batch_first=True, padding_value=text_encoded_pad),
         'log_probs_length': torch.tensor([floor((item['spectrogram'].shape[-1] - 4) / 4 + 1) for item in dataset_items]),  # lengths of spectrograms without padding
         'text_encoded_length': torch.tensor([item['text_encoded'].shape[-1] for item in dataset_items]),  # lengths of encoded texts without padding
+        'audio_path': [item['audio_path'] for item in dataset_items],
     }
     return result_batch
     

@@ -8,7 +8,7 @@ class Subsampling(nn.Module):
             self, 
             in_channels, 
             out_channels,
-            kernel_size=4,
+            subsampling_rate,
             fc_out=256,
             dropout_rate=0.1
         ):
@@ -17,8 +17,8 @@ class Subsampling(nn.Module):
         self.conv = nn.Conv1d(
             in_channels=in_channels,
             out_channels=out_channels,
-            kernel_size=kernel_size,
-            stride=kernel_size
+            kernel_size=subsampling_rate,
+            stride=subsampling_rate
         )
         self.linear = nn.Linear(in_channels, fc_out)
         self.dropout = nn.Dropout(p=dropout_rate)
@@ -168,6 +168,7 @@ class CTCModel(nn.Module):
             self,
             in_channels,
             out_channels,
+            subsampling_rate,
             subsampling_out,
             n_blocks,
             decoder_dim,
@@ -177,7 +178,8 @@ class CTCModel(nn.Module):
 
         self.subsampling = Subsampling(
             in_channels, 
-            out_channels, 
+            out_channels,
+            subsampling_rate=subsampling_rate,
             fc_out=subsampling_out
         )
         modules = []

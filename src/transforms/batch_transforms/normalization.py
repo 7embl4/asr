@@ -8,4 +8,4 @@ class Normalize(nn.Module):
     def forward(self, data):
         mean = torch.mean(data, dim=1).unsqueeze(1)
         std = torch.std(data, dim=1).unsqueeze(1)
-        return (data - mean) / std
+        return (data - mean) / (std + 1e-8)

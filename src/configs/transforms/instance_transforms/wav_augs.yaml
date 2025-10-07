@@ -2,20 +2,24 @@ train:
   get_spectrogram:
     _target_: torchaudio.transforms.MelSpectrogram
     sample_rate: 16000
-    n_fft: 100
-  audio:
+    n_fft: 200
+    n_mels: 50
+    f_min: 50
+    f_max: 8000
+    center: False
+  audio: 
     _target_: torchvision.transforms.v2.Compose
     transforms:
       - _target_: src.transforms.wav_augs.Gain
       - _target_: src.transforms.wav_augs.Pitch
         sample_rate: 16000
-      - _target_: src.transforms.wav_augs.Noise
-        loc: 0.0
-        scale: 0.03
-      - _target_: src.transforms.wav_augs.BandPassFilter
-        sample_rate: 16000
-        min_center_frequency: 150
-        max_center_frequency: 4000
+      # - _target_: src.transforms.wav_augs.Noise
+      #   loc: 0.0
+      #   scale: 0.02
+      # - _target_: src.transforms.wav_augs.BandPassFilter
+      #   sample_rate: 16000
+      #   min_center_frequency: 150
+      #   max_center_frequency: 4000
 
 inference:
   get_spectrogram:

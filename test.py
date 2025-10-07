@@ -7,7 +7,7 @@ from torchvision.transforms.v2 import Compose
 from math import ceil
 import numpy as np
 from torch.utils.data import DataLoader
-
+from tqdm import tqdm
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
 import matplotlib.pyplot as plt
@@ -24,7 +24,7 @@ from src.transforms.wav_augs import (
     ImpulseResponse,
     BandPassFilter
 )
-from src.transforms.batch_transforms import Normalize
+from src.transforms.batch_transforms import Normalize, LogScale
 
 from src.metrics.utils import calc_wer
 from src.metrics.utils import calc_cer
@@ -49,46 +49,57 @@ dataset = LibrispeechDataset(
     part='train-clean-100', 
     text_encoder=CTCTextEncoder(),
     instance_transforms={
-        'get_spectrogram': T.MelSpectrogram(sample_rate=16000, n_fft=100),
-        'audio': Compose([
-            Gain(), 
-            Pitch(sample_rate=16000),
-            Noise(loc=0.0, scale=0.03),
-            BandPassFilter(sample_rate=16000)
-        ])
+        'get_spectrogram': T.MelSpectrogram(
+            sample_rate=16000,
+            n_fft=200,
+            f_min=50,
+            f_max=8000,
+            n_mels=50,
+            center=False
+        )
+        # 'audio': Compose([
+        #     Gain(), 
+        #     Pitch(sample_rate=16000),
+        #     Noise(loc=0.0, scale=0.03),
+        #     BandPassFilter(sample_rate=16000)
+        # ])
     })
 
 # items = [dataset[i] for i in range(16)]
 # batch = collate_fn(items)
-# print(batch["spectrogram"].shape)
-# exit(0)
 
-# means = torch.mean(batch["spectrogram"], dim=1).unsqueeze(1)
-# stds = torch.std(batch["spectrogram"], dim=1).unsqueeze(1)
+# print(batch["audio_path"][5])
+# spec = batch["spectrogram"][5]
+# log_spec = torch.log(spec + 1e-8)
 
-# norm = (batch["spectrogram"] - means) / (stds + 1e-8)
-# print(batch["spectrogram"])
-# print(norm.shape)
-# print(norm)
-
-# print(batch["spectrogram"].shape)
-# print(batch["spectrogram"][0].shape)
-#print(batch["spectrogram"][0])
-#norm = Normalize(0.5, 0.5)
-#print(norm(batch["spectrogram"][0]))
+# # Отображение спектрограммы
+def vis_spec(spec):
+    spec = spec.cpu().detach()
+    plt.figure(figsize=(12, 6))
+    plt.imshow(spec.numpy(), cmap='viridis', aspect='auto', origin='lower')
+    plt.colorbar()
+    plt.tight_layout()
+    plt.show()
 
 dataloader = DataLoader(
     dataset=dataset,
     collate_fn=collate_fn,
     drop_last=True,
-    shuffle=True,
+    #shuffle=True,
     batch_size=16
 )
 
+# for batch in tqdm(dataloader):
+#     if (torch.any(0.8 * batch["log_probs_length"] < batch["text_encoded_length"])):
+#         print(batch)
+#         print()
+# print('done')
+
 
 model = CTCModel(
-    in_channels=128,  # n_mel
-    out_channels=128,
+    in_channels=50,  # n_mel
+    out_channels=50,
+    subsampling_rate=2,
     subsampling_out=256,
     n_blocks=4,
     decoder_dim=640,
@@ -98,12 +109,13 @@ model.to(device)
 opt = torch.optim.AdamW(model.parameters())
 criterion = CTCLossWrapper()
 encoder = CTCTextEncoder()
+log_scale = LogScale()
+norm = Normalize()
 
 inf_loss = False
 for _e in range(5):
     for idx, batch in enumerate(dataloader):
-        # if (idx + 1 == 18):
-        #     continue
+        batch["spectrogram"] = norm(log_scale(batch["spectrogram"]))
         batch["spectrogram"] = batch["spectrogram"].to(device)
         opt.zero_grad()
         out = model(**batch)
@@ -112,22 +124,22 @@ for _e in range(5):
         loss["loss"].backward()
         opt.step()
         print(f"loss on epoch {_e + 1}, batch {idx + 1}: ", loss["loss"])
-        if (torch.isinf(loss["loss"]).any()):
-            #print(batch)
+        if (torch.isinf(loss["loss"]).any() or torch.isnan(loss["loss"]).any()):
             inf_loss = True
-            print(batch["text"])
-            print(batch["log_probs_length"], batch["text_encoded_length"])
-            print(batch["log_probs"].mean(), batch["log_probs"].std())
+            print("lens: ", batch["log_probs_length"], batch["text_encoded_length"])
+            print("mean, std: ", batch["log_probs"].mean(), batch["log_probs"].std())
+            print("audio shape: ", batch["audio"].shape)
+            print("audio max: ", batch["audio"].abs().max())
+            print("audio path: ", batch["audio_path"])
+            print("text: ", batch["text"])
+            print("spec mean std: ", batch["spectrogram"].mean(), batch["spectrogram"].std())
+            vis_spec(batch["spectrogram"][0])
             break
-        if (idx + 1 > 20):
+        if (idx + 1 > 200):
             break
     if inf_loss:
         break
 
-
-    #print(out["log_probs"])
-
-#print(out["log_probs"])
 
 # encoder = CTCTextEncoder()
 # beam_search_res = encoder.beam_search(out["log_probs"])
