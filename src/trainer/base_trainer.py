@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import time
 
 import torch
 from numpy import inf
@@ -8,6 +9,7 @@ from tqdm.auto import tqdm
 from src.datasets.data_utils import inf_loop
 from src.metrics.tracker import MetricTracker
 from src.utils.io_utils import ROOT_PATH
+from src.utils.debug import check_memory
 
 
 class BaseTrainer:
@@ -205,6 +207,7 @@ class BaseTrainer:
         self.train_metrics.reset()
         self.writer.set_step((epoch - 1) * self.epoch_len)
         self.writer.add_scalar("epoch", epoch)
+        torch.cuda.empty_cache()
         for batch_idx, batch in enumerate(
             tqdm(self.train_dataloader, desc="train", total=self.epoch_len)
         ):
@@ -266,6 +269,7 @@ class BaseTrainer:
         self.is_train = False
         self.model.eval()
         self.evaluation_metrics.reset()
+        torch.cuda.empty_cache()
         with torch.no_grad():
             for batch_idx, batch in tqdm(
                 enumerate(dataloader),
@@ -276,6 +280,7 @@ class BaseTrainer:
                     batch,
                     metrics=self.evaluation_metrics,
                 )
+
             self.writer.set_step(epoch * self.epoch_len, part)
             self._log_scalars(self.evaluation_metrics)
             self._log_batch(
@@ -548,7 +553,7 @@ class BaseTrainer:
             self.logger.info(f"Loading model weights from: {pretrained_path} ...")
         else:
             print(f"Loading model weights from: {pretrained_path} ...")
-        checkpoint = torch.load(pretrained_path, self.device)
+        checkpoint = torch.load(pretrained_path, self.device, weights_only=False)
 
         if checkpoint.get("state_dict") is not None:
             self.model.load_state_dict(checkpoint["state_dict"])

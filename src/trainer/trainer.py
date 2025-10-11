@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import torchaudio
 
-from src.logger.utils import plot_spectrogram
+from src.logger.utils import plot_spectrogram, plot_output
 from src.metrics.tracker import MetricTracker
 from src.metrics.utils import calc_cer, calc_wer
 from src.trainer.base_trainer import BaseTrainer
@@ -81,10 +81,12 @@ class Trainer(BaseTrainer):
         if mode == "train":  # the method is called only every self.log_step steps
             self.log_spectrogram(**batch)
             self.log_audio(**batch)
+            self.log_model_output(**batch)
         else:
             # Log Stuff
             self.log_spectrogram(**batch)
             self.log_audio(**batch)
+            self.log_model_output(**batch)
             self.log_predictions(**batch)
 
     def log_audio(self, audio_path, **batch):
@@ -99,13 +101,13 @@ class Trainer(BaseTrainer):
         image = plot_spectrogram(spectrogram_for_plot)
         self.writer.add_image("spectrogram", image)
 
+    def log_model_output(self, log_probs, **batch):
+        image = plot_output(log_probs[0].detach().cpu())
+        self.writer.add_image("log_probs", image)
+
     def log_predictions(
         self, text, log_probs, log_probs_length, audio_path, examples_to_log=10, **batch
     ):
-        # TODO add beam search
-        # Note: by improving text encoder and metrics design
-        # this logging can also be improved significantly
-
         argmax_inds = log_probs.cpu().argmax(-1).numpy()
         argmax_inds = [
             inds[: int(ind_len)]
@@ -116,11 +118,15 @@ class Trainer(BaseTrainer):
         beam_search_results = self.text_encoder.beam_search(log_probs)
 
         beam_search_texts = []
-        for hypo in beam_search_results:
-            hypo_text = self.text_encoder.ctc_decode(hypo[0].tokens.tolist())
-            hypo_wer = calc_wer(hypo_text)
-            hypo_cer = calc_cer(hypo_text)
-            beam_search_texts.append((hypo_text, hypo_wer, hypo_cer))
+        for hypos, target in zip(beam_search_results, text):
+            best_hypo = (None, 1000, 1000)
+            for hypo in hypos:
+                hypo_text = self.text_encoder.ctc_decode(hypo.tokens.tolist())
+                hypo_wer = calc_wer(target, hypo_text) * 100
+                hypo_cer = calc_cer(target, hypo_text) * 100
+                if hypo_wer <= best_hypo[-1]:
+                    best_hypo = (hypo_text, hypo_wer, hypo_cer)
+            beam_search_texts.append(best_hypo)
 
         tuples = list(zip(argmax_texts, text, argmax_texts_raw, audio_path, beam_search_texts))
 

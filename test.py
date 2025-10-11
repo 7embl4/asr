@@ -1,269 +1,31 @@
 import torch
 import torchaudio
-from torchinfo import summary
-import torch.nn as nn
 import torchaudio.transforms as T
-from torchvision.transforms.v2 import Compose
-from math import ceil
-import numpy as np
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from omegaconf import OmegaConf
-from hydra.utils import instantiate
 import matplotlib.pyplot as plt
 
 from src.model import CTCModel
 from src.text_encoder import CTCTextEncoder
-from src.datasets import LibrispeechDataset
+from src.datasets import LibrispeechDataset, CustomDirAudioDataset
 from src.datasets.collate import collate_fn
-from src.loss import CTCLossWrapper
-from src.transforms.wav_augs import (
-    Gain, 
-    Pitch, 
-    Noise, 
-    ImpulseResponse,
-    BandPassFilter
-)
-from src.transforms.batch_transforms import Normalize, LogScale
+from string import ascii_lowercase
 
-from src.metrics.utils import calc_wer
-from src.metrics.utils import calc_cer
-
-from IPython.display import Audio
+from torchaudio.models.decoder._ctc_decoder import ctc_decoder, download_pretrained_files
+from src.metrics.utils import calc_cer, calc_wer
+from pathlib import Path
 
 import warnings
 warnings.filterwarnings('ignore')
-torch.manual_seed(0)
+#torch.manual_seed(0)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# m = nn.Conv1d(16, 32, kernel_size=5, padding=2)
-# i = torch.rand(10, 16, 80)
-# out = m(i)
-# print(out.shape)
+path = Path('data/datasets/custom_dataset/audio')
+print(path)
+print(path.suffix)
+print(next(iter(path.iterdir())))
+print(path.stem)
 
-# n = nn.Conv2d(3, 32, kernel_size=3, stride=1, padding=1)
-# a = torch.rand(10, 3, 128, 128)
-# out = n(a)
-# print(out.shape)
-
-dataset = LibrispeechDataset(
-    part='train-clean-100', 
-    text_encoder=CTCTextEncoder(),
-    instance_transforms={
-        'get_spectrogram': T.MelSpectrogram(
-            sample_rate=16000,
-            n_fft=200,
-            f_min=50,
-            f_max=8000,
-            n_mels=50,
-            center=False
-        )
-        # 'audio': Compose([
-        #     Gain(), 
-        #     Pitch(sample_rate=16000),
-        #     Noise(loc=0.0, scale=0.03),
-        #     BandPassFilter(sample_rate=16000)
-        # ])
-    })
-
-def vis_spec(spec1, spec2):
-    spec1 = spec1.cpu().detach()
-    spec2 = spec2.cpu().detach()
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(18, 6))
-    ax[0].imshow(spec1.numpy(), cmap='viridis', aspect='auto', origin='lower')
-    ax[1].imshow(spec2.numpy(), cmap='viridis', aspect='auto', origin='lower')
-    plt.tight_layout()
-    plt.show()
-
-items = [dataset[i] for i in range(16)]
-batch = collate_fn(items)
-
-mel_t = T.MelSpectrogram(
-    sample_rate=16000,
-    n_fft=200,
-    f_min=50,
-    f_max=8000,
-    n_mels=50,
-    center=False
-)
-
-print(items[0]["audio_path"])
-
-audio = items[0]["audio"]
-spec = mel_t(audio)
-log_spec = torch.log(spec + 1e-8)
-print(audio[0, :20])
-
-#aug = Gain(min_gain_in_db=-12.0, max_gain_in_db=3.0)
-# aug = Pitch(
-#     min_transpose_semitones=-4.0, 
-#     max_transpose_semitones=4.0, 
-#     sample_rate=16000
-# )
-# aug = Noise(
-#     loc=0.0, scale=0.005,
-# )
-aug = BandPassFilter(
-    sample_rate=16000,
-    min_center_frequency=200,
-    max_center_frequency=4000,
-    min_bandwidth_fraction=1.0,
-    max_bandwidth_fraction=1.99,
-    p=1.0
-)
-aug_audio = aug(audio)
-aug_spec = mel_t(aug_audio)
-log_aug_spec = torch.log(aug_spec + 1e-8)
-print(aug_audio[0, :20])
-torchaudio.save("aug_audio.wav", aug_audio, 16000)
-
-vis_spec(log_spec[0], log_aug_spec[0])
-
-# # Отображение спектрограммы
-
-
-# dataloader = DataLoader(
-#     dataset=dataset,
-#     collate_fn=collate_fn,
-#     drop_last=True,
-#     #shuffle=True,
-#     batch_size=16
-# )
-
-# for batch in tqdm(dataloader):
-#     if (torch.any(0.8 * batch["log_probs_length"] < batch["text_encoded_length"])):
-#         print(batch)
-#         print()
-# print('done')
-
-
-# model = CTCModel(
-#     in_channels=50,  # n_mel
-#     out_channels=50,
-#     subsampling_rate=2,
-#     subsampling_out=256,
-#     n_blocks=4,
-#     decoder_dim=640,
-#     out_feat=28  # vocab len
-# )
-# model.to(device)
-# opt = torch.optim.AdamW(model.parameters())
-# criterion = CTCLossWrapper()
-# encoder = CTCTextEncoder()
-# log_scale = LogScale()
-# norm = Normalize()
-
-# inf_loss = False
-# for _e in range(5):
-#     for idx, batch in enumerate(dataloader):
-#         batch["spectrogram"] = norm(log_scale(batch["spectrogram"]))
-#         batch["spectrogram"] = batch["spectrogram"].to(device)
-#         opt.zero_grad()
-#         out = model(**batch)
-#         batch.update(out)
-#         loss = criterion(**batch)
-#         loss["loss"].backward()
-#         opt.step()
-#         print(f"loss on epoch {_e + 1}, batch {idx + 1}: ", loss["loss"])
-#         if (torch.isinf(loss["loss"]).any() or torch.isnan(loss["loss"]).any()):
-#             inf_loss = True
-#             print("lens: ", batch["log_probs_length"], batch["text_encoded_length"])
-#             print("mean, std: ", batch["log_probs"].mean(), batch["log_probs"].std())
-#             print("audio shape: ", batch["audio"].shape)
-#             print("audio max: ", batch["audio"].abs().max())
-#             print("audio path: ", batch["audio_path"])
-#             print("text: ", batch["text"])
-#             print("spec mean std: ", batch["spectrogram"].mean(), batch["spectrogram"].std())
-#             vis_spec(batch["spectrogram"][0])
-#             break
-#         if (idx + 1 > 200):
-#             break
-#     if inf_loss:
-#         break
-
-
-# encoder = CTCTextEncoder()
-# beam_search_res = encoder.beam_search(out["log_probs"])
-# print(len(beam_search_res))
-# print(len(beam_search_res[0]))
-# print(beam_search_res[0][0].tokens)
-
-# t = torch.tensor([1, 2, 3])
-# print(t.unsqueeze(0).shape)
-# print(t.unsqueeze(1).shape)
-
-
-
-# text_encoder = CTCTextEncoder()
-# print(text_encoder.beam_search(out['log_probs'][0]))
-
-# text_encoder = CTCTextEncoder()
-# text = "^^^^^^hhhh^^^^e^ll^^^^llooooo ^^w^orrl^^^^ddd"
-# encoded_text = text_encoder.encode(text).squeeze().tolist()
-# print('encoded text: ', encoded_text)
-# print('decoded text: ', text_encoder.ctc_decode(encoded_text))
-
-
-
-
-# print('batch sizes')
-# print('spectrogram: ', batch['spectrogram'].shape)
-# print('text_encoded: ', batch['text_encoded'].shape)
-# print('log_probs_length: ', batch['log_probs_length'].shape)
-# print('text_encoded_length: ', batch['text_encoded_length'].shape)
-# print('---------------------------')
-
-
-
-
-
-
-
-# config = OmegaConf.load('src/configs/metrics/example.yaml')
-
-# text_encoder = CTCTextEncoder()
-# metrics = {"train": [], "inference": []}
-# for metric_type in ["train", "inference"]:
-#     for metric_config in config.get(metric_type, []):
-#         # use text_encoder in metrics
-#         metrics[metric_type].append(
-#             instantiate(metric_config, text_encoder=text_encoder)
-#         )
-# print(metrics)
-
-# print('dataset item')
-# print('audio: ', items[0]['audio'].shape)
-# print('spectrogram: ', items[0]['spectrogram'].shape)
-# print('text: ', items[0]['text'])
-# print('text_encoded: ', items[0]['text_encoded'].shape)
-# print('audio_path: ', items[0]['audio_path'])
-# print('---------------------------')
-
-# cfg = OmegaConf.load('src/configs/model/ctc_model.yaml')
-# model = CTCModel(cfg)
-# out = model(batch)
-# batch.update(out)
-# # print(out.shape)
-# # model output is [batch_size, seq_len, vocab_len]
-
-# ctc_wrapper = CTCLossWrapper()
-# ctc_criterion = nn.CTCLoss()
-# wrapper_loss = ctc_wrapper(**batch)
-# real_loss = ctc_criterion(
-#     log_probs=torch.transpose(batch['log_probs'], 0, 1),
-#     targets=batch['text_encoded'],
-#     input_lengths=batch['log_probs_length'],
-#     target_lengths=batch['text_encoded_length']
-# )
-# print(wrapper_loss)
-# print(real_loss)
-
-# print('batch element')
-# print('spectrogram: ', batch['spectrogram'][0])
-# print('text_encoded: ', batch['text_encoded'][0])
-# print('input_lens: ', batch['input_lens'])
-# print('target_lens: ', batch['target_lens'])
-# print('---------------------------')
-
-
+dataset = CustomDirAudioDataset('data/datasets/custom_dataset/audio', 'data/datasets/custom_dataset/transcriptions')
+print(dataset[0])

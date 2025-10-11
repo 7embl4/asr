@@ -3,20 +3,13 @@ from string import ascii_lowercase
 from collections import defaultdict
 
 import torch
-import torchaudio
 from torchaudio.models.decoder._ctc_decoder import ctc_decoder
-
-# TODO add CTC decode
-# TODO add BPE, LM, Beam Search support
-# Note: think about metrics and encoder
-# The design can be remarkably improved
-# to calculate stuff more efficiently and prettier
 
 
 class CTCTextEncoder:
     EMPTY_TOK = "^"
 
-    def __init__(self, alphabet=None, **kwargs):
+    def __init__(self, alphabet=None, nbest=1, beam_size=1, **kwargs):
         """
         Args:
             alphabet (list): alphabet for language. If None, it will be
@@ -36,8 +29,8 @@ class CTCTextEncoder:
             lexicon=None,
             tokens=self.vocab,
             lm=None,
-            nbest=1,
-            beam_size=4,
+            nbest=nbest,
+            beam_size=beam_size,
             blank_token=self.EMPTY_TOK,
             sil_token=self.EMPTY_TOK
         )
@@ -81,7 +74,7 @@ class CTCTextEncoder:
         return res.replace(self.EMPTY_TOK, "").strip()
 
     def beam_search(self, log_probs):
-        res = self.beam_search_decoder(log_probs)
+        res = self.beam_search_decoder(log_probs.detach().cpu())
         return res
 
     def hand_crafted_beam_search(self, log_probs, beam_size=4):

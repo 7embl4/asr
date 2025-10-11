@@ -53,7 +53,23 @@ def plot_spectrogram(spectrogram, name=None):
         image (Image): image of the spectrogram
     """
     plt.figure(figsize=(20, 5))
-    plt.pcolormesh(spectrogram[:, :512])
+    plt.pcolormesh(spectrogram[:, :360])
+    plt.title(name)
+    buf = io.BytesIO()
+    plt.savefig(buf, format="png")
+    buf.seek(0)
+
+    # convert buffer to Tensor
+    image = PIL.Image.open(buf).convert("RGB")
+
+    plt.close()
+
+    return image
+
+
+def plot_output(log_probs, name=None):
+    plt.figure(figsize=(20, 5))
+    plt.pcolormesh(log_probs.T)
     plt.title(name)
     buf = io.BytesIO()
     plt.savefig(buf, format="png")
