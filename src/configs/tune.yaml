@@ -8,24 +8,22 @@ defaults:
   - _self_
 optimizer:
   _target_: torch.optim.AdamW
-  lr: 3e-4
+  lr: 1e-5
+  betas: [0.9, 0.98]
+  eps: 1e-9
+  weight_decay: 1e-6
 lr_scheduler:
-  _target_: torch.optim.lr_scheduler.OneCycleLR
-  max_lr: 5e-4
-  epochs: ${trainer.n_epochs}
-  steps_per_epoch: ${trainer.epoch_len}
-  pct_start: 0.1
-  div_factor: 8
-  final_div_factor: 50
-  anneal_strategy: cos
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  T_max: 20000
+  eta_min: 1e-8
 loss_function:
   _target_: src.loss.CTCLossWrapper
 text_encoder:
   _target_: src.text_encoder.CTCTextEncoder
 trainer:
-  log_step: 50
-  n_epochs: 5
-  epoch_len: 500
+  log_step: 500
+  n_epochs: 10
+  epoch_len: 2000
   device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
   resume_from: null # null or path to the checkpoint dir with *.pth and config.yaml
   device: auto # device name or "auto"
@@ -34,6 +32,6 @@ trainer:
   save_period: 5 # checkpoint each save_period epochs in addition to the best epoch
   early_stop: ${trainer.n_epochs} # epochs for early stopping
   save_dir: "saved"
-  seed: 5
+  seed: 42
   max_grad_norm: 1.0
-  from_pretrained: "saved/third_train/model_best.pth"
+  from_pretrained: "saved/conf_s_train/checkpoint-epoch50.pth"

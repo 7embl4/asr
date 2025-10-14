@@ -2,7 +2,7 @@ _target_: src.model.CTCModel
 in_channels: 80  # n_mel
 out_channels: 80
 subsampling_rate: 2
-subsampling_out: 256
+subsampling_out: 144
 n_blocks: 4
-decoder_dim: 640
+decoder_dim: 320
 out_feat: 28  # vocab len
