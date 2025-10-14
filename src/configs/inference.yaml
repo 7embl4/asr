@@ -12,6 +12,6 @@ text_encoder:
 inferencer:
   device_tensors: ["spectrogram", "text_encoded"] # which tensors should be on device (ex. GPU)
   device: auto # device name or "auto"
-  save_path: "saved/inference/test"
+  save_path: "inference/test"
   seed: 1
   from_pretrained: "saved/conf_s_train/checkpoint-epoch50.pth" # path to the pretrained model
