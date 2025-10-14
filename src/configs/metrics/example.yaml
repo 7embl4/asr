@@ -17,3 +17,5 @@ inference:
     name: "WER_(BeamSearch)"
     nbest: 15
     beam_size: 15
+    lexicon: "data/lm/librispeech-lexicon.txt"
+    lm: "data/lm/3-gram.arpa"
