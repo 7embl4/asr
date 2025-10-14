@@ -16,7 +16,6 @@ from string import ascii_lowercase
 from torchaudio.models.decoder._ctc_decoder import ctc_decoder, download_pretrained_files
 from src.metrics.utils import calc_cer, calc_wer
 from pathlib import Path
-from torchinfo import summary
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -24,8 +23,9 @@ warnings.filterwarnings('ignore')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-dataset = LibrispeechDataset(
-    'train-clean-100',
+dataset = CustomDirAudioDataset(
+    "data/datasets/test_data/audio",
+    "data/datasets/test_data/transcriptions",
     text_encoder=CTCTextEncoder(),
     instance_transforms={
         'get_spectrogram': T.MelSpectrogram(
@@ -40,24 +40,14 @@ dataset = LibrispeechDataset(
     }
 )
 
-dataloader = DataLoader(
-    dataset=dataset,
-    collate_fn=collate_fn,
-    drop_last=True,
-    shuffle=True,
-    batch_size=8
-)
+print(dataset[0])
 
-print(len(dataloader))
+# dataloader = DataLoader(
+#     dataset=dataset,
+#     collate_fn=collate_fn,
+#     drop_last=True,
+#     shuffle=True,
+#     batch_size=8
+# )
 
-
-model = CTCModel(
-    in_channels=80,
-    out_channels=80,
-    subsampling_rate=2,
-    subsampling_out=144,
-    n_blocks=4,
-    decoder_dim=320,
-    out_feat=28
-)
-print(summary(model))
+# print(len(dataloader))
