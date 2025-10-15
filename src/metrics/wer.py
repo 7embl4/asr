@@ -79,7 +79,7 @@ class BeamSearchWERMetric(BaseMetric):
             if len(hypo.words) != 0:
                 hypo_text = "".join(hypo.words)
             else:
-                hypo_text = self.text_encoder.ctc_decode(hypo.tokens.toist())
+                hypo_text = self.text_encoder.ctc_decode(hypo.tokens.tolist())
             hypo_wer = calc_wer(target_text, hypo_text)
             if hypo_wer <= best_wer:
                 best_hypo = hypo_text
