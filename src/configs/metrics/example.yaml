@@ -13,9 +13,12 @@ inference:
     name: "CER_(BeamSearch)"
     nbest: 15
     beam_size: 15
+    type: "torch"
   - _target_: src.metrics.BeamSearchWERMetric
     name: "WER_(BeamSearch)"
     nbest: 15
     beam_size: 15
-    lexicon: "data/lm/librispeech-lexicon.txt"
-    lm: "data/lm/3-gram.arpa"
+    type: "torch"
+    # lexicon_path: "data/lm/librispeech-lexicon.txt"
+    # vocab_path: "data/lm/librispeech-vocab.txt"
+    # lm_path: "data/lm/3-gram.arpa"

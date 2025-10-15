@@ -3,7 +3,49 @@ from string import ascii_lowercase
 from collections import defaultdict
 
 import torch
+import numpy as np
 from torchaudio.models.decoder._ctc_decoder import ctc_decoder
+
+
+class Hypo:
+    def __init__(self, words, score):
+        self.words = words
+        self.score = score
+
+class BeamSearch:
+    def __init__(self, vocab, beam_size, empty_token):
+        self.vocab = vocab
+        self.beam_size = beam_size
+        self.empty_token = empty_token
+
+    def __call__(self, log_probs):
+        res = []
+        for log_prob in log_probs:
+            dp = {
+                ("", self.empty_token): 0.0
+            }
+            for curr_step_log_prob in log_prob:
+                dp = self.__expand_and_merge_beams(dp, curr_step_log_prob)
+                dp = self.__truncate_beams(dp)
+            res.append([Hypo(words=list(hypo[0][0]), score=hypo[1]) for hypo in dp.items()])
+        return res
+
+    def __expand_and_merge_beams(self, dp, curr_step_log_prob): 
+        new_dp = defaultdict(float)
+        for (pref, last_char), pref_log_proba in dp.items():
+            for idx, char in enumerate(self.vocab):
+                curr_log_proba = pref_log_proba + curr_step_log_prob[idx]
+                curr_pref = pref
+                if (char != self.empty_token and last_char != char):
+                    curr_pref += char
+                curr_char = char
+
+
+                new_dp[(curr_pref, curr_char)] = np.logaddexp(new_dp[(curr_pref, curr_char)], curr_log_proba.item())
+        return new_dp
+    
+    def __truncate_beams(self, dp):
+        return dict(sorted(list(dp.items()), key=lambda x: x[1], reverse=True)[:self.beam_size])    
 
 
 class CTCTextEncoder:
@@ -76,30 +118,6 @@ class CTCTextEncoder:
     def beam_search(self, log_probs):
         res = self.beam_search_decoder(log_probs.detach().cpu())
         return res
-
-    def hand_crafted_beam_search(self, log_probs, beam_size=4):
-        dp = {
-            ("", self.EMPTY_TOK): 1.0
-        }
-        for curr_step_prob in log_probs:
-            dp = self.__expand_and_merge_beams(dp, curr_step_prob)
-            dp = self.__truncate_beams(dp, beam_size)
-        return dp
-
-    def __expand_and_merge_beams(self, dp, curr_step_prob): 
-        new_dp = defaultdict(float)
-        for (pref, last_char), pref_proba in dp.items():
-            for idx, char in enumerate(self.vocab):
-                curr_pref_proba = pref_proba * curr_step_prob[idx]
-                curr_pref = pref
-                if (char != self.EMPTY_TOK and last_char != char):
-                    curr_pref += char
-                curr_char = char
-                new_dp[(curr_pref, curr_char)] += curr_pref_proba.item()
-        return new_dp
-    
-    def __truncate_beams(self, dp, beam_size):
-        return dict(sorted(list(dp.items()), key=lambda x: x[1])[:beam_size])
 
     @staticmethod
     def normalize_text(text: str):
