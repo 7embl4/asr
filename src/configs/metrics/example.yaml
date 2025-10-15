@@ -11,14 +11,11 @@ inference:
     name: "WER_(Argmax)"
   - _target_: src.metrics.BeamSearchCERMetric
     name: "CER_(BeamSearch)"
-    nbest: 15
-    beam_size: 15
+    nbest: 16
+    beam_size: 16
     type: "torch"
   - _target_: src.metrics.BeamSearchWERMetric
     name: "WER_(BeamSearch)"
-    nbest: 15
-    beam_size: 15
+    nbest: 16
+    beam_size: 16
     type: "torch"
-    # lexicon_path: "data/lm/librispeech-lexicon.txt"
-    # vocab_path: "data/lm/librispeech-vocab.txt"
-    # lm_path: "data/lm/3-gram.arpa"

@@ -2,6 +2,7 @@
 
 <p align="center">
   <a href="#about">About</a> •
+  <a href="#results">Results</a> •
   <a href="#installation">Installation</a> •
   <a href="#how-to-use">How To Use</a> •
   <a href="#credits">Credits</a> •
@@ -10,9 +11,16 @@
 
 ## About
 
-This repository contains a template for solving ASR task with PyTorch. This template branch is a part of the [HSE DLA course](https://github.com/markovka17/dla) ASR homework. Some parts of the code are missing (or do not follow the most optimal design choices...) and students are required to fill these parts themselves (as well as writing their own models, etc.).
+This repository contains [Homework 1 of HSE DLA course](https://github.com/markovka17/dla/tree/2025/hw1_asr). \
+Homework was solved using [Conformer](https://arxiv.org/abs/2005.08100) based model, in particular it's small version. Model was trained on train-clean-100 partition of Librespeech Dataset, CometML report of training - [report](https://www.comet.com/7embl4/asr/kxhxqnlx3j5wfg88knvolztgfuhxt6s6?&prevPath=%2F7embl4%2Fasr%2Fview%2Fnew%2Fpanels).
 
-See the task assignment [here](https://github.com/markovka17/dla/tree/2024/hw1_asr).
+## Results
+Metric         | test-clean | test-other
+---------------|------------|-------------
+Argmax WER     |    40.04   |    67.2    
+Argmax CER     |    13.46   |    30.73
+BeamSearch WER |    39.57   |    65.03
+BeamSearch CER |    12.67   |    29.09
 
 ## Installation
 
