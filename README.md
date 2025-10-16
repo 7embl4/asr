@@ -5,6 +5,7 @@
   <a href="#results">Results</a> •
   <a href="#installation">Installation</a> •
   <a href="#how-to-use">How To Use</a> •
+  <a href="#demo">Demo</a> •
   <a href="#credits">Credits</a> •
   <a href="#license">License</a>
 </p>
@@ -77,6 +78,10 @@ To run inference (evaluate the model or save predictions):
 ```bash
 python3 inference.py HYDRA_CONFIG_ARGUMENTS
 ```
+
+## Demo
+
+You can also see [Demo notebook](https://github.com/7embl4/asr/blob/main/notebooks/demo.ipynb) with full installation and usage processes
 
 ## Credits
 
