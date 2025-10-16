@@ -6,4 +6,4 @@ class LogScale(nn.Module):
         super().__init__()
 
     def forward(self, data: Tensor):
-        return torch.log(data + 1e-8)
+        return torch.log(data + 1e-6)
