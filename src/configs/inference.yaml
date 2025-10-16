@@ -14,4 +14,4 @@ inferencer:
   device: auto # device name or "auto"
   save_path: "inference/test"
   seed: 1
-  from_pretrained: "saved/conf_s_train/checkpoint-epoch50.pth" # path to the pretrained model
+  from_pretrained: "saved/conf_s_train/model_best.pth" # path to the pretrained model
