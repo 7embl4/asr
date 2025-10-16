@@ -63,6 +63,16 @@ Follow these steps to install the project:
    pre-commit install
    ```
 
+## Pretrained Model
+
+To run inference you should download pretrained model from [HuggingFace](https://huggingface.co/artem1085715/conformer-small) using:
+
+```bash
+huggingface-cli download artem1085715/conformer-small --local-dir DIR_TO_SAVE_MODEL
+```
+
+There you can you use either best by WER model `model_best.pth` or last training checkpoint `checkpoint-epoch50.pth`
+
 ## How To Use
 
 To train a model, run the following command:
